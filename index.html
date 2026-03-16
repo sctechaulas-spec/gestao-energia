@@ -6,7 +6,6 @@
     <title>Gestão Kit - Energia</title>
     
     <link rel="apple-touch-icon" href="icon.png">
-    <meta name="apple-mobile-web-app-title" content="Gestão Kit">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#3498db">
@@ -17,7 +16,6 @@
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding: 15px; }
         .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         
-        /* Estilo do Logo e Título */
         .brand-header { text-align: center; margin-bottom: 20px; }
         .brand-logo { width: 100%; height: 200px; border-radius: 10px; object-fit: cover; border: 3px solid #f0f2f5; margin-bottom: 10px; background-color: #eee; }
         .brand-header h2 { margin: 0; color: var(--dark); font-size: 1.5rem; }
@@ -32,11 +30,12 @@
         input, select, textarea { padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem; }
         
         .actions { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; justify-content: center; margin-top: 10px; }
-        .btn { padding: 10px 15px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 0.8rem; flex: 1; min-width: 120px; }
+        .btn { padding: 10px 12px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 0.75rem; flex: 1; min-width: 100px; }
         .btn-save { background-color: var(--success); }
         .btn-backup { background-color: var(--primary); }
         .btn-import { background-color: var(--warning); color: #333; }
         .btn-export { background-color: var(--dark); }
+        .btn-danger { background-color: var(--danger); }
         
         .table-responsive { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 600px; }
@@ -54,7 +53,7 @@
         
         .fila-total { background-color: #f8f9fa; font-weight: bold; }
         .valor-soma { color: var(--danger); font-size: 1.2rem; }
-        .chart-container { margin-top: 25px; height: 250px; }
+        .chart-container { margin-top: 25px; height: 200px; }
         #fileInput { display: none; }
     </style>
 </head>
@@ -81,10 +80,10 @@
         </div>
         <div class="actions">
             <button class="btn btn-save" onclick="salvarDados()">Salvar Mês</button>
-            <button class="btn btn-backup" onclick="exportarBackup()">Gerar Backup</button>
+            <button class="btn btn-backup" onclick="exportarBackup()">Backup</button>
             <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">Importar</button>
             <input type="file" id="fileInput" accept=".json" onchange="importarBackup(event)">
-            <button class="btn btn-export" onclick="exportarCSV()">Relatório CSV</button>
+            <button class="btn btn-danger" onclick="limparTudo()">Limpar Tudo</button>
         </div>
     </div>
 
@@ -248,6 +247,14 @@
         calcularTudo();
     }
 
+    function limparTudo() {
+        if (confirm("ATENÇÃO: Isso apagará TODOS os meses salvos e anotações permanentemente. Deseja continuar?")) {
+            localStorage.removeItem(STORAGE_KEY);
+            alert("Todos os dados foram apagados.");
+            window.location.reload();
+        }
+    }
+
     function atualizarSelectHistorico() {
         const historico = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
         const select = document.getElementById('buscaHistorico');
@@ -295,22 +302,6 @@
             } catch (err) { alert("Arquivo inválido!"); }
         };
         reader.readAsText(event.target.files[0]);
-    }
-
-    function exportarCSV() {
-        const historico = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-        let csv = "Data;Kit;Inquilino;Ant;Atu;Gasto;Total;Pago\n";
-        Object.keys(historico).sort().forEach(d => {
-            historico[d].unidades.forEach(u => {
-                let g = (u.atu - u.ant).toFixed(1);
-                csv += `${d};Kit ${u.id};${u.nome};${u.ant};${u.atu};${g};${(g*historico[d].tarifa).toFixed(2)};${u.pago?'S':'N'}\n`;
-            });
-        });
-        const blob = new Blob(["\ufeff"+csv], {type: 'text/csv;charset=utf-8;'});
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "relatorio.csv";
-        link.click();
     }
 
     atualizarSelectHistorico();
