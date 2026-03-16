@@ -3,110 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Pro - Kitnets</title>
+    <title>Gestão Kit - Energia</title>
+    
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="apple-mobile-web-app-title" content="Gestão Kit">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#3498db">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #3498db; --success: #2ecc71; --danger: #e74c3c; --dark: #2c3e50; --warning: #f1c40f; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
-        .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding: 15px; }
+        .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        
+        /* Estilo do Logo e Título */
+        .brand-header { text-align: center; margin-bottom: 20px; }
+        .brand-logo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #f0f2f5; margin-bottom: 10px; background-color: #eee; }
+        .brand-header h2 { margin: 0; color: var(--dark); font-size: 1.5rem; }
         
         .header-controls { 
-            display: flex; flex-wrap: wrap; gap: 15px; background: #f8f9fa; 
-            padding: 20px; border-radius: 10px; align-items: flex-end; margin-bottom: 25px; border: 1px solid #eee;
+            display: flex; flex-wrap: wrap; gap: 10px; background: #f8f9fa; 
+            padding: 15px; border-radius: 10px; align-items: flex-end; margin-bottom: 20px; border: 1px solid #eee;
         }
         
-        .control-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 150px; }
-        label { font-size: 0.85rem; font-weight: bold; color: var(--dark); }
-        input, select, textarea { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 140px; }
+        label { font-size: 0.8rem; font-weight: bold; color: var(--dark); }
+        input, select, textarea { padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem; }
         
-        .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-        .btn { padding: 10px 15px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 0.85rem; }
+        .actions { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; justify-content: center; margin-top: 10px; }
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 0.8rem; flex: 1; min-width: 120px; }
         .btn-save { background-color: var(--success); }
-        .btn-export { background-color: var(--dark); }
         .btn-backup { background-color: var(--primary); }
         .btn-import { background-color: var(--warning); color: #333; }
+        .btn-export { background-color: var(--dark); }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 12px; text-align: center; border-bottom: 1px solid #eee; }
-        th { background-color: #f8f9fa; color: #666; font-size: 0.8rem; }
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 600px; }
+        th, td { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f9fa; color: #666; font-size: 0.75rem; }
         
-        .input-table { width: 75px; text-align: center; }
-        .consumo-calculado { font-weight: bold; color: var(--primary); font-size: 1.1rem; }
+        .input-table { width: 70px; text-align: center; }
+        .consumo-calculado { font-weight: bold; color: var(--primary); font-size: 1rem; }
         .pago-checkbox { width: 18px; height: 18px; cursor: pointer; }
 
-        .anotacoes-section { margin-top: 40px; padding-top: 20px; border-top: 2px solid #f0f2f5; }
+        .anotacoes-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid #f0f2f5; }
         .grid-anotacoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; margin-top: 15px; }
         .card-kit { background: #fcfcfc; border: 1px solid #eee; padding: 15px; border-radius: 8px; }
-        .card-kit h4 { margin-top: 0; color: var(--primary); border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .card-kit h4 { margin: 0 0 10px 0; color: var(--primary); border-bottom: 1px solid #eee; padding-bottom: 5px; }
         
-        .fila-total { background-color: #f8f9fa; font-size: 1.1rem; font-weight: bold; }
-        .valor-soma { color: var(--danger); font-size: 1.3rem; }
-        .chart-container { margin-top: 30px; height: 250px; }
+        .fila-total { background-color: #f8f9fa; font-weight: bold; }
+        .valor-soma { color: var(--danger); font-size: 1.2rem; }
+        .chart-container { margin-top: 25px; height: 250px; }
         #fileInput { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Gestão de Energia - 8 Kitnets</h2>
-    <p style="text-align:center; color:#666; margin-top: -10px;">Sistema de Controle e Backup</p>
+    <div class="brand-header">
+        <img src="icon.png" alt="Logo" class="brand-logo" onerror="this.src='https://via.placeholder.com/80?text=KITNETS'">
+        <h2>Gestão Pro - 8 Kitnets</h2>
+    </div>
 
     <div class="header-controls">
         <div class="control-group">
-            <label>Data da Leitura:</label>
+            <label>Data Leitura:</label>
             <input type="date" id="dataReferencia">
         </div>
         <div class="control-group">
-            <label>Buscar Data Salva:</label>
+            <label>Histórico:</label>
             <select id="buscaHistorico"></select>
         </div>
         <div class="control-group">
-            <label>Valor do kWh (R$):</label>
+            <label>kWh (R$):</label>
             <input type="number" id="valorKwhGlobal" step="0.01" value="0.95" oninput="calcularTudo()">
         </div>
         <div class="actions">
             <button class="btn btn-save" onclick="salvarDados()">Salvar Mês</button>
             <button class="btn btn-backup" onclick="exportarBackup()">Gerar Backup</button>
-            <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">Importar Backup</button>
+            <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">Importar</button>
             <input type="file" id="fileInput" accept=".json" onchange="importarBackup(event)">
-            <button class="btn btn-export" onclick="exportarCSV()">Relatório Excel</button>
+            <button class="btn btn-export" onclick="exportarCSV()">Relatório CSV</button>
         </div>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Unidade</th>
-                <th>Inquilino</th>
-                <th>L. Anterior</th>
-                <th>L. Atual</th>
-                <th>Gasto (kWh)</th>
-                <th>Total (R$)</th>
-                <th>Pago?</th>
-            </tr>
-        </thead>
-        <tbody id="tabelaCorpo"></tbody>
-        <tfoot>
-            <tr class="fila-total">
-                <td colspan="5" style="text-align: right;">SOMA TOTAL:</td>
-                <td class="valor-soma">R$ <span id="somaGeral">0,00</span></td>
-                <td></td>
-            </tr>
-        </tfoot>
-    </table>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Unidade</th>
+                    <th>Inquilino</th>
+                    <th>L. Anterior</th>
+                    <th>L. Atual</th>
+                    <th>Gasto</th>
+                    <th>Total</th>
+                    <th>Pago?</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaCorpo"></tbody>
+            <tfoot>
+                <tr class="fila-total">
+                    <td colspan="5" style="text-align: right;">SOMA TOTAL:</td>
+                    <td class="valor-soma">R$ <span id="somaGeral">0,00</span></td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
 
     <div class="chart-container">
         <canvas id="graficoConsumo"></canvas>
     </div>
 
     <div class="anotacoes-section">
-        <h3>Anotações e Controle de Inquilinos</h3>
+        <h3>Anotações e Controle</h3>
         <div class="grid-anotacoes" id="gridAnotacoes"></div>
     </div>
 </div>
 
 <script>
-    const STORAGE_KEY = 'gestao_kitnets_v5_final';
+    const STORAGE_KEY = 'gestao_kitnets_v6_final';
     let meuGrafico;
 
     function montarInterface() {
@@ -116,7 +133,7 @@
             htmlTabela += `
                 <tr>
                     <td><strong>Kit ${i}</strong></td>
-                    <td><input type="text" id="nome-${i}" placeholder="Inquilino..." style="width:100px"></td>
+                    <td><input type="text" id="nome-${i}" placeholder="Nome..." style="width:90px"></td>
                     <td><input type="number" id="ant-${i}" class="input-table" oninput="calcularTudo()"></td>
                     <td><input type="number" id="atu-${i}" class="input-table" oninput="calcularTudo()"></td>
                     <td><span id="gasto-${i}" class="consumo-calculado">0,0</span></td>
@@ -127,9 +144,9 @@
                 <div class="card-kit">
                     <h4>Kitnet ${i}</h4>
                     <label>Entrada (Data/Luz):</label>
-                    <input type="text" id="entrada-${i}" style="width:95%; margin-bottom:8px; font-size:0.8rem">
+                    <input type="text" id="entrada-${i}" style="width:95%; margin-bottom:5px; font-size:0.8rem">
                     <label>Saída (Data/Luz):</label>
-                    <input type="text" id="saida-${i}" style="width:95%; margin-bottom:8px; font-size:0.8rem">
+                    <input type="text" id="saida-${i}" style="width:95%; margin-bottom:5px; font-size:0.8rem">
                     <label>Notas:</label>
                     <textarea id="obs-${i}" rows="2" style="width:95%; resize:none; font-size:0.8rem"></textarea>
                 </div>`;
@@ -157,7 +174,7 @@
             const ant = parseFloat(document.getElementById(`ant-${i}`).value) || 0;
             const atu = parseFloat(document.getElementById(`atu-${i}`).value) || 0;
             const displayGasto = document.getElementById(`gasto-${i}`);
-            let gastoKwh = atu - ant;
+            let gastoKwh = (atu - ant);
             
             if (atu > 0 && gastoKwh < 0) {
                 displayGasto.innerText = "Erro";
@@ -193,7 +210,7 @@
         }
         historico[dataKey] = dadosDia;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(historico));
-        alert("Dados salvos no aparelho!");
+        alert("Salvo com sucesso!");
         atualizarSelectHistorico();
     }
 
@@ -235,7 +252,7 @@
         const historico = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
         const select = document.getElementById('buscaHistorico');
         const datas = Object.keys(historico).sort().reverse();
-        select.innerHTML = '<option value="">-- Selecione --</option>';
+        select.innerHTML = '<option value="">-- Ver --</option>';
         datas.forEach(d => {
             let opt = document.createElement('option');
             opt.value = d; opt.text = d.split('-').reverse().join('/');
@@ -250,20 +267,19 @@
             type: 'bar',
             data: {
                 labels: ['K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7', 'K8'],
-                datasets: [{ label: 'Consumo kWh', data: dados, backgroundColor: '#3498db' }]
+                datasets: [{ label: 'kWh', data: dados, backgroundColor: '#3498db' }]
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
     }
 
-    // --- FUNÇÕES DE BACKUP ---
     function exportarBackup() {
         const dados = localStorage.getItem(STORAGE_KEY);
-        if (!dados) return alert("Não há dados para exportar!");
+        if (!dados) return alert("Sem dados!");
         const blob = new Blob([dados], { type: 'application/json' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `backup_kitnets_${new Date().toISOString().split('T')[0]}.json`;
+        link.download = `backup_kitnets.json`;
         link.click();
     }
 
@@ -272,31 +288,28 @@
         reader.onload = function(e) {
             try {
                 const json = JSON.parse(e.target.result);
-                if (confirm("Isso substituirá os dados atuais deste aparelho. Deseja continuar?")) {
+                if (confirm("Sobrescrever dados atuais?")) {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(json));
-                    alert("Backup importado com sucesso!");
                     window.location.reload();
                 }
-            } catch (err) {
-                alert("Arquivo inválido!");
-            }
+            } catch (err) { alert("Arquivo inválido!"); }
         };
         reader.readAsText(event.target.files[0]);
     }
 
     function exportarCSV() {
         const historico = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-        let csv = "Data;Kit;Inquilino;Anterior;Atual;Gasto;Total;Pago\n";
+        let csv = "Data;Kit;Inquilino;Ant;Atu;Gasto;Total;Pago\n";
         Object.keys(historico).sort().forEach(d => {
             historico[d].unidades.forEach(u => {
                 let g = (u.atu - u.ant).toFixed(1);
-                csv += `${d};Kit ${u.id};${u.nome};${u.ant};${u.atu};${g};${(g*historico[d].tarifa).toFixed(2)};${u.pago?'Sim':'Não'}\n`;
+                csv += `${d};Kit ${u.id};${u.nome};${u.ant};${u.atu};${g};${(g*historico[d].tarifa).toFixed(2)};${u.pago?'S':'N'}\n`;
             });
         });
         const blob = new Blob(["\ufeff"+csv], {type: 'text/csv;charset=utf-8;'});
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "relatorio_kitnets.csv";
+        link.download = "relatorio.csv";
         link.click();
     }
 
