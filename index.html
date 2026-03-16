@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Pro - Kitnets</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #3498db; --success: #2ecc71; --danger: #e74c3c; --dark: #2c3e50; --warning: #f1c40f; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        
+        .header-controls { 
+            display: flex; flex-wrap: wrap; gap: 15px; background: #f8f9fa; 
+            padding: 20px; border-radius: 10px; align-items: flex-end; margin-bottom: 25px; border: 1px solid #eee;
+        }
+        
+        .control-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 150px; }
+        label { font-size: 0.85rem; font-weight: bold; color: var(--dark); }
+        input, select, textarea { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; }
+        
+        .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 0.85rem; }
+        .btn-save { background-color: var(--success); }
+        .btn-export { background-color: var(--dark); }
+        .btn-backup { background-color: var(--primary); }
+        .btn-import { background-color: var(--warning); color: #333; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: center; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f9fa; color: #666; font-size: 0.8rem; }
+        
+        .input-table { width: 75px; text-align: center; }
+        .consumo-calculado { font-weight: bold; color: var(--primary); font-size: 1.1rem; }
+        .pago-checkbox { width: 18px; height: 18px; cursor: pointer; }
+
+        .anotacoes-section { margin-top: 40px; padding-top: 20px; border-top: 2px solid #f0f2f5; }
+        .grid-anotacoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; margin-top: 15px; }
+        .card-kit { background: #fcfcfc; border: 1px solid #eee; padding: 15px; border-radius: 8px; }
+        .card-kit h4 { margin-top: 0; color: var(--primary); border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        
+        .fila-total { background-color: #f8f9fa; font-size: 1.1rem; font-weight: bold; }
+        .valor-soma { color: var(--danger); font-size: 1.3rem; }
+        .chart-container { margin-top: 30px; height: 250px; }
+        #fileInput { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Gestão de Energia - 8 Kitnets</h2>
+    <p style="text-align:center; color:#666; margin-top: -10px;">Sistema de Controle e Backup</p>
+
+    <div class="header-controls">
+        <div class="control-group">
+            <label>Data da Leitura:</label>
+            <input type="date" id="dataReferencia">
+        </div>
+        <div class="control-group">
+            <label>Buscar Data Salva:</label>
+            <select id="buscaHistorico"></select>
+        </div>
+        <div class="control-group">
+            <label>Valor do kWh (R$):</label>
+            <input type="number" id="valorKwhGlobal" step="0.01" value="0.95" oninput="calcularTudo()">
+        </div>
+        <div class="actions">
+            <button class="btn btn-save" onclick="salvarDados()">Salvar Mês</button>
+            <button class="btn btn-backup" onclick="exportarBackup()">Gerar Backup</button>
+            <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">Importar Backup</button>
+            <input type="file" id="fileInput" accept=".json" onchange="importarBackup(event)">
+            <button class="btn btn-export" onclick="exportarCSV()">Relatório Excel</button>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Unidade</th>
+                <th>Inquilino</th>
+                <th>L. Anterior</th>
+                <th>L. Atual</th>
+                <th>Gasto (kWh)</th>
+                <th>Total (R$)</th>
+                <th>Pago?</th>
+            </tr>
+        </thead>
+        <tbody id="tabelaCorpo"></tbody>
+        <tfoot>
+            <tr class="fila-total">
+                <td colspan="5" style="text-align: right;">SOMA TOTAL:</td>
+                <td class="valor-soma">R$ <span id="somaGeral">0,00</span></td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="chart-container">
+        <canvas id="graficoConsumo"></canvas>
+    </div>
+
+    <div class="anotacoes-section">
+        <h3>Anotações e Controle de Inquilinos</h3>
+        <div class="grid-anotacoes" id="gridAnotacoes"></div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'gestao_kitnets_v5_final';
+    let meuGrafico;
+
+    function montarInterface() {
+        let htmlTabela = "";
+        let htmlCards = "";
+        for (let i = 1; i <= 8; i++) {
+            htmlTabela += `
+                <tr>
+                    <td><strong>Kit ${i}</strong></td>
+                    <td><input type="text" id="nome-${i}" placeholder="Inquilino..." style="width:100px"></td>
+                    <td><input type="number" id="ant-${i}" class="input-table" oninput="calcularTudo()"></td>
+                    <td><input type="number" id="atu-${i}" class="input-table" oninput="calcularTudo()"></td>
+                    <td><span id="gasto-${i}" class="consumo-calculado">0,0</span></td>
+                    <td><span style="font-weight:bold">R$ <span id="res-${i}">0,00</span></span></td>
+                    <td><input type="checkbox" id="pago-${i}" class="pago-checkbox"></td>
+                </tr>`;
+            htmlCards += `
+                <div class="card-kit">
+                    <h4>Kitnet ${i}</h4>
+                    <label>Entrada (Data/Luz):</label>
+                    <input type="text" id="entrada-${i}" style="width:95%; margin-bottom:8px; font-size:0.8rem">
+                    <label>Saída (Data/Luz):</label>
+                    <input type="text" id="saida-${i}" style="width:95%; margin-bottom:8px; font-size:0.8rem">
+                    <label>Notas:</label>
+                    <textarea id="obs-${i}" rows="2" style="width:95%; resize:none; font-size:0.8rem"></textarea>
+                </div>`;
+        }
+        document.getElementById('tabelaCorpo').innerHTML = htmlTabela;
+        document.getElementById('gridAnotacoes').innerHTML = htmlCards;
+    }
+
+    montarInterface();
+
+    const campoData = document.getElementById('dataReferencia');
+    campoData.value = new Date().toISOString().split('T')[0];
+    
+    campoData.addEventListener('change', carregarSessao);
+    document.getElementById('buscaHistorico').addEventListener('change', function() {
+        if(this.value) { campoData.value = this.value; carregarSessao(); }
+    });
+
+    function calcularTudo() {
+        const valorKwh = parseFloat(document.getElementById('valorKwhGlobal').value) || 0;
+        let acumuladoGeral = 0;
+        let dadosGrafico = [];
+
+        for (let i = 1; i <= 8; i++) {
+            const ant = parseFloat(document.getElementById(`ant-${i}`).value) || 0;
+            const atu = parseFloat(document.getElementById(`atu-${i}`).value) || 0;
+            const displayGasto = document.getElementById(`gasto-${i}`);
+            let gastoKwh = atu - ant;
+            
+            if (atu > 0 && gastoKwh < 0) {
+                displayGasto.innerText = "Erro";
+                displayGasto.style.color = "red";
+                document.getElementById(`res-${i}`).innerText = "0,00";
+                dadosGrafico.push(0);
+            } else {
+                displayGasto.style.color = "var(--primary)";
+                let gastoFormatado = Math.max(0, gastoKwh).toFixed(1);
+                displayGasto.innerText = gastoFormatado.replace('.', ',');
+                const valorDinheiro = parseFloat(gastoFormatado) * valorKwh;
+                document.getElementById(`res-${i}`).innerText = valorDinheiro.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                acumuladoGeral += valorDinheiro;
+                dadosGrafico.push(parseFloat(gastoFormatado));
+            }
+        }
+        document.getElementById('somaGeral').innerText = acumuladoGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        atualizarGrafico(dadosGrafico);
+    }
+
+    function salvarDados() {
+        const dataKey = campoData.value;
+        const historico = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+        const dadosDia = { tarifa: document.getElementById('valorKwhGlobal').value, unidades: [] };
+
+        for (let i = 1; i <= 8; i++) {
+            dadosDia.unidades.push({
+                id: i, nome: document.getElementById(`nome-${i}`).value,
+                ant: document.getElementById(`ant-${i}`).value, atu: document.getElementById(`atu-${i}`).value,
+                pago: document.getElementById(`pago-${i}`).checked, entrada: document.getElementById(`entrada-${i}`).value,
+                saida: document.getElementById(`saida-${i}`).value, obs: document.getElementById(`obs-${i}`).value
+            });
+        }
+        historico[dataKey] = dadosDia;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(historico));
+        alert("Dados salvos no aparelho!");
+        atualizarSelectHistorico();
+    }
+
+    function carregarSessao() {
+        const dataKey = campoData.value;
+        const historico = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+        if (historico[dataKey]) {
+            const d = historico[dataKey];
+            document.getElementById('valorKwhGlobal').value = d.tarifa;
+            d.unidades.forEach(u => {
+                document.getElementById(`nome-${u.id}`).value = u.nome || "";
+                document.getElementById(`ant-${u.id}`).value = u.ant || "";
+                document.getElementById(`atu-${u.id}`).value = u.atu || "";
+                document.getElementById(`pago-${u.id}`).checked = u.pago || false;
+                document.getElementById(`entrada-${u.id}`).value = u.entrada || "";
+                document.getElementById(`saida-${u.id}`).value = u.saida || "";
+                document.getElementById(`obs-${u.id}`).value = u.obs || "";
+            });
+        } else {
+            const datas = Object.keys(historico).sort().reverse();
+            const ultimaData = datas.find(d => d < dataKey);
+            for (let i = 1; i <= 8; i++) {
+                document.getElementById(`atu-${i}`).value = "";
+                document.getElementById(`pago-${i}`).checked = false;
+                if (ultimaData) {
+                    const pass = historico[ultimaData].unidades.find(x => x.id == i);
+                    document.getElementById(`ant-${i}`).value = pass.atu;
+                    document.getElementById(`nome-${i}`).value = pass.nome || "";
+                    document.getElementById(`entrada-${i}`).value = pass.entrada || "";
+                    document.getElementById(`saida-${i}`).value = pass.saida || "";
+                    document.getElementById(`obs-${i}`).value = pass.obs || "";
+                }
+            }
+        }
+        calcularTudo();
+    }
+
+    function atualizarSelectHistorico() {
+        const historico = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+        const select = document.getElementById('buscaHistorico');
+        const datas = Object.keys(historico).sort().reverse();
+        select.innerHTML = '<option value="">-- Selecione --</option>';
+        datas.forEach(d => {
+            let opt = document.createElement('option');
+            opt.value = d; opt.text = d.split('-').reverse().join('/');
+            select.add(opt);
+        });
+    }
+
+    function atualizarGrafico(dados) {
+        const ctx = document.getElementById('graficoConsumo').getContext('2d');
+        if (meuGrafico) meuGrafico.destroy();
+        meuGrafico = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7', 'K8'],
+                datasets: [{ label: 'Consumo kWh', data: dados, backgroundColor: '#3498db' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    // --- FUNÇÕES DE BACKUP ---
+    function exportarBackup() {
+        const dados = localStorage.getItem(STORAGE_KEY);
+        if (!dados) return alert("Não há dados para exportar!");
+        const blob = new Blob([dados], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `backup_kitnets_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+    }
+
+    function importarBackup(event) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const json = JSON.parse(e.target.result);
+                if (confirm("Isso substituirá os dados atuais deste aparelho. Deseja continuar?")) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(json));
+                    alert("Backup importado com sucesso!");
+                    window.location.reload();
+                }
+            } catch (err) {
+                alert("Arquivo inválido!");
+            }
+        };
+        reader.readAsText(event.target.files[0]);
+    }
+
+    function exportarCSV() {
+        const historico = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+        let csv = "Data;Kit;Inquilino;Anterior;Atual;Gasto;Total;Pago\n";
+        Object.keys(historico).sort().forEach(d => {
+            historico[d].unidades.forEach(u => {
+                let g = (u.atu - u.ant).toFixed(1);
+                csv += `${d};Kit ${u.id};${u.nome};${u.ant};${u.atu};${g};${(g*historico[d].tarifa).toFixed(2)};${u.pago?'Sim':'Não'}\n`;
+            });
+        });
+        const blob = new Blob(["\ufeff"+csv], {type: 'text/csv;charset=utf-8;'});
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "relatorio_kitnets.csv";
+        link.click();
+    }
+
+    atualizarSelectHistorico();
+    carregarSessao();
+</script>
+</body>
+</html>
